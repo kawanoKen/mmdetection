@@ -248,7 +248,6 @@ class OTAAssigner(BaseAssigner):
         matched_gt_inds = matching_matrix[fg_mask_inboxes, :].argmax(1)
         matched_pred_ious = (matching_matrix *
                              pairwise_ious).sum(1)[fg_mask_inboxes]
-        breakpoint()
         return matched_pred_ious, matched_gt_inds
 
 
