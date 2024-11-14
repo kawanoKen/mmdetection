@@ -208,7 +208,6 @@ class YOLOXHead(BaseDenseHead):
         cls_score = conv_cls(cls_feat)
         bbox_pred = conv_reg(reg_feat)
         objectness = conv_obj(reg_feat)
-
         return cls_score, bbox_pred, objectness
 
     def forward(self, x: Tuple[Tensor]) -> Tuple[List]:
@@ -515,7 +514,7 @@ class YOLOXHead(BaseDenseHead):
                 # https://github.com/open-mmlab/mmdetection/issues/7298
                 loss_l1 = flatten_bbox_preds.sum() * 0
             loss_dict.update(loss_l1=loss_l1)
-
+        breakpoint()
         return loss_dict
 
     @torch.no_grad()
@@ -616,3 +615,128 @@ class YOLOXHead(BaseDenseHead):
         l1_target[:, :2] = (gt_cxcywh[:, :2] - priors[:, :2]) / priors[:, 2:]
         l1_target[:, 2:] = torch.log(gt_cxcywh[:, 2:] / priors[:, 2:] + eps)
         return l1_target
+
+    def assigner_test(
+            self,
+            cls_scores: Sequence[Tensor],
+            bbox_preds: Sequence[Tensor],
+            objectnesses: Sequence[Tensor],
+            batch_gt_instances: Sequence[InstanceData],
+            num_imgs,
+            batch_gt_instances_ignore: OptInstanceList = None):
+        
+
+        """assignerのテスト用。loss_by_featと_get_targets_singleの必要部分コピペ"""
+
+
+        if batch_gt_instances_ignore is None:
+            batch_gt_instances_ignore = [None] * num_imgs
+
+        featmap_sizes = [cls_score.shape[2:] for cls_score in cls_scores]
+        mlvl_priors = self.prior_generator.grid_priors(
+            featmap_sizes,
+            dtype=cls_scores[0].dtype,
+            device=cls_scores[0].device,
+            with_stride=True)
+
+        flatten_cls_preds = [
+            cls_pred.permute(0, 2, 3, 1).reshape(num_imgs, -1,
+                                                 self.cls_out_channels)
+            for cls_pred in cls_scores
+        ]
+        flatten_bbox_preds = [
+            bbox_pred.permute(0, 2, 3, 1).reshape(num_imgs, -1, 4)
+            for bbox_pred in bbox_preds
+        ]
+        flatten_objectness = [
+            objectness.permute(0, 2, 3, 1).reshape(num_imgs, -1)
+            for objectness in objectnesses
+        ]
+
+        flatten_cls_preds = torch.cat(flatten_cls_preds, dim=1)
+        flatten_bbox_preds = torch.cat(flatten_bbox_preds, dim=1)
+        flatten_objectness = torch.cat(flatten_objectness, dim=1)
+        flatten_priors = torch.cat(mlvl_priors)
+        flatten_bboxes = self._bbox_decode(flatten_priors, flatten_bbox_preds)
+        results = []
+        for i in range(num_imgs):
+            result = self.get_assign(
+                flatten_priors,
+                flatten_cls_preds.detach()[i],
+                flatten_bboxes.detach()[i],
+                flatten_objectness.detach()[i],
+                batch_gt_instances[i],
+                batch_gt_instances_ignore[i])
+            results.append(result)
+        
+        return results
+
+
+
+    def get_assign(
+            self,
+            priors: Tensor,
+            cls_preds: Tensor,
+            decoded_bboxes: Tensor,
+            objectness: Tensor,
+            gt_instances: InstanceData,
+            gt_instances_ignore: Optional[InstanceData] = None,) -> tuple:
+        """Compute classification, regression, and objectness targets for
+        priors in a single image.
+
+        Args:
+            priors (Tensor): All priors of one image, a 2D-Tensor with shape
+                [num_priors, 4] in [cx, xy, stride_w, stride_y] format.
+            cls_preds (Tensor): Classification predictions of one image,
+                a 2D-Tensor with shape [num_priors, num_classes]
+            decoded_bboxes (Tensor): Decoded bboxes predictions of one image,
+                a 2D-Tensor with shape [num_priors, 4] in [tl_x, tl_y,
+                br_x, br_y] format.
+            objectness (Tensor): Objectness predictions of one image,
+                a 1D-Tensor with shape [num_priors]
+            gt_instances (:obj:`InstanceData`): Ground truth of instance
+                annotations. It should includes ``bboxes`` and ``labels``
+                attributes.
+            img_meta (dict): Meta information for current image.
+            gt_instances_ignore (:obj:`InstanceData`, optional): Instances
+                to be ignored during training. It includes ``bboxes`` attribute
+                data that is ignored during training and testing.
+                Defaults to None.
+        Returns:
+            tuple:
+                foreground_mask (list[Tensor]): Binary mask of foreground
+                targets.
+                cls_target (list[Tensor]): Classification targets of an image.
+                obj_target (list[Tensor]): Objectness targets of an image.
+                bbox_target (list[Tensor]): BBox targets of an image.
+                l1_target (int): BBox L1 targets of an image.
+                num_pos_per_img (int): Number of positive samples in an image.
+        """
+
+        num_priors = priors.size(0)
+        num_gts = len(gt_instances)
+        # No target
+        if num_gts == 0:
+            cls_target = cls_preds.new_zeros((0, self.num_classes))
+            bbox_target = cls_preds.new_zeros((0, 4))
+            l1_target = cls_preds.new_zeros((0, 4))
+            obj_target = cls_preds.new_zeros((num_priors, 1))
+            foreground_mask = cls_preds.new_zeros(num_priors).bool()
+            return (foreground_mask, cls_target, obj_target, bbox_target,
+                    l1_target, 0)
+
+        # YOLOX uses center priors with 0.5 offset to assign targets,
+        # but use center priors without offset to regress bboxes.
+        offset_priors = torch.cat(
+            [priors[:, :2] + priors[:, 2:] * 0.5, priors[:, 2:]], dim=-1)
+
+        scores = cls_preds.sigmoid() * objectness.unsqueeze(1).sigmoid()
+        pred_instances = InstanceData(
+            bboxes=decoded_bboxes, scores=scores.sqrt_(), priors=offset_priors)
+        
+        assign_result = self.assigner.assign(
+            pred_instances=pred_instances,
+            gt_instances=gt_instances,
+            gt_instances_ignore=gt_instances_ignore)
+        
+        return assign_result.gt_inds

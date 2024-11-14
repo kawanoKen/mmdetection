@@ -113,6 +113,8 @@ def main():
         # if 'runner_type' is set in the cfg
         runner = RUNNERS.build(cfg)
 
+    # for v in runner.train_dataloader:
+    #     breakpoint()
     # start training
     runner.train()
 

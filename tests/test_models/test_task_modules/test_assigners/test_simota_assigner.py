@@ -29,6 +29,8 @@ class TestSimOTAAssigner(TestCase):
         expected_gt_inds = torch.LongTensor([1, 0])
         assert_allclose(assign_result.gt_inds, expected_gt_inds)
 
+        return assign_result
+
     def test_assign_with_no_valid_bboxes(self):
         assigner = SimOTAAssigner(
             center_radius=2.5,
@@ -64,3 +66,8 @@ class TestSimOTAAssigner(TestCase):
             pred_instances=pred_instances, gt_instances=gt_instances)
         expected_gt_inds = torch.LongTensor([0, 0])
         assert_allclose(assign_result.gt_inds, expected_gt_inds)
+
+
+test = TestSimOTAAssigner()
+print(test.test_assign()
+      )
