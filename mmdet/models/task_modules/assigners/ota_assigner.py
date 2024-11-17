@@ -11,6 +11,7 @@ from mmdet.registry import TASK_UTILS
 from mmdet.utils import ConfigType
 from .assign_result import AssignResult
 from .base_assigner import BaseAssigner
+import ot
 
 INF = 100000.0
 EPS = 1.0e-7
@@ -226,22 +227,11 @@ class OTAAssigner(BaseAssigner):
         _, pi = self.sinkhorn(nu, mu, cost)
         rescale_factor, _ = pi.max(dim=1)
         matching_matrix = pi / rescale_factor.unsqueeze(1)
-        matching_matrix = matching_matrix
-        # for gt_idx in range(num_gt):
-        #     _, pos_idx = torch.topk(
-        #         cost[:, gt_idx], k=dynamic_ks[gt_idx], largest=False)
-        #     matching_matrix[:, gt_idx][pos_idx] = 1
 
-        # del topk_ious, dynamic_ks, pos_idx
+        # matching_matrix = ot.emd(nu, mu, cost, EPS)
+        # assert (matching_matrix.sum(1) == nu).all()
+        # assert (matching_matrix.sum(0) == mu).all()
 
-
-        #prior_match_gt_mask = matching_matrix.sum(1) > 1
-        # if prior_match_gt_mask.sum() > 0:
-        #     cost_min, cost_argmin = torch.min(
-        #         cost[prior_match_gt_mask, :], dim=1)
-        #     matching_matrix[prior_match_gt_mask, :] *= 0
-        #     matching_matrix[prior_match_gt_mask, cost_argmin] = 1
-        # get foreground mask inside box and center prior
         matching_matrix = matching_matrix[:, :-1]
         fg_mask_inboxes = matching_matrix.sum(1) > 0
         valid_mask[valid_mask.clone()] = fg_mask_inboxes

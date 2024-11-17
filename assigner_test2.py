@@ -30,7 +30,7 @@ model = cfg.model
 backbone = model.backbone
 neck = model.neck
 head = model.bbox_head
-data_preprocessor = DetDataPreprocessor()
+data_preprocessor = model.data_preprocessor
 
 runner = RUNNERS.build(cfg)
 # runner._train_dataloader["dataset"]["pipeline"] = [{'type': 'YOLOXHSVRandomAug'}, 
@@ -41,27 +41,25 @@ runner = RUNNERS.build(cfg)
 #                                                    ]
 
 for v in runner.train_dataloader:
-
-    v = data_preprocessor.forward(v)
-    inputs = v["inputs"].cuda()
+    v = DetDataPreprocessor().forward(v)
+    inputs = v["inputs"]
     gt_instances = [v["data_samples"][i].gt_instances  for i in range(8)]
     ignored_instances = [v["data_samples"][i].ignored_instances  for i in range(8)] 
     
-    cfg.train_cfg = dict(assigner=dict(type='OTAAssigner', center_radius=2.5))
-    model = init_detector(cfg)
+    cfg.train_cfg = dict(assigner=dict(type='SimOTAAssigner', center_radius=2.5))
+    model = init_detector(cfg, device = "cpu")
 
-    cls_scores, bbox_preds, objectnesses = model._forward(inputs)
+    cls_scores, bbox_preds, objectnesses = model(inputs)
     results = model.bbox_head.assigner_test(cls_scores, bbox_preds, objectnesses, gt_instances, 8)
-
     ota_assign_results_stride8 = [results[i][:6400] for i in range (8)]
     ota_assign_results_stride16 = [results[i][6400:8000] for i in range (8)]
     ota_assign_results_stride32 = [results[i][8000:] for i in range (8)]
-
+    
     cfg.train_cfg = dict(assigner=dict(type='OTAAssigner', center_radius=2.5))
     checkpoint_path = "./work_dirs/yolox_s_ota_8xb8-300e_coco/epoch_100.pth"
-    model = init_detector(cfg, checkpoint = checkpoint_path)
+    model = init_detector(cfg, checkpoint = checkpoint_path, device = "cpu")
 
-    cls_scores, bbox_preds, objectnesses = model._forward(inputs)
+    cls_scores, bbox_preds, objectnesses = model(inputs)
     results = model.bbox_head.assigner_test(cls_scores, bbox_preds, objectnesses, gt_instances, 8)
 
     ota_100e_assign_results_stride8 = [results[i][:6400] for i in range (8)]

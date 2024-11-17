@@ -220,7 +220,6 @@ class YOLOXHead(BaseDenseHead):
             Tuple[List]: A tuple of multi-level classification scores, bbox
             predictions, and objectnesses.
         """
-
         return multi_apply(self.forward_single, x, self.multi_level_cls_convs,
                            self.multi_level_reg_convs,
                            self.multi_level_conv_cls,
@@ -514,7 +513,6 @@ class YOLOXHead(BaseDenseHead):
                 # https://github.com/open-mmlab/mmdetection/issues/7298
                 loss_l1 = flatten_bbox_preds.sum() * 0
             loss_dict.update(loss_l1=loss_l1)
-        breakpoint()
         return loss_dict
 
     @torch.no_grad()

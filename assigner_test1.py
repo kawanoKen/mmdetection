@@ -47,19 +47,19 @@ for v in runner.train_dataloader:
     ignored_instances = [v["data_samples"][i].ignored_instances  for i in range(8)] 
     
     train_cfg = dict(assigner=dict(type='OTAAssigner', center_radius=2.5))
-    yolox = YOLOX(backbone, neck, head, train_cfg = train_cfg)
+    yolox = YOLOX(backbone, neck, head, train_cfg = train_cfg, data_preprocessor=data_preprocessor)
 
-    cls_scores, bbox_preds, objectnesses = yolox._forward(inputs)
+    cls_scores, bbox_preds, objectnesses = yolox(inputs)
     results = yolox.bbox_head.assigner_test(cls_scores, bbox_preds, objectnesses, gt_instances, 8)
 
     ota_assign_results_stride8 = [results[i][:6400] for i in range (8)]
     ota_assign_results_stride16 = [results[i][6400:8000] for i in range (8)]
     ota_assign_results_stride32 = [results[i][8000:] for i in range (8)]
-
+    
     train_cfg = dict(assigner=dict(type='SimOTAAssigner', center_radius=2.5))
     yolox = YOLOX(backbone, neck, head, train_cfg = train_cfg)
 
-    cls_scores, bbox_preds, objectnesses = yolox._forward(inputs)
+    cls_scores, bbox_preds, objectnesses = yolox(inputs)
     results = yolox.bbox_head.assigner_test(cls_scores, bbox_preds, objectnesses, gt_instances, 8)
 
     simota_assign_results_stride8 = [results[i][:6400] for i in range (8)]

@@ -8,7 +8,6 @@ data_root = 'data/coco/'
 dataset_type = 'CocoDataset'
 
 
-model = dict(train_cfg=dict(_delete_=True, assigner=dict(type='OTAAssigner', center_radius=2.5)))
 
 train_pipeline = [
     dict(type='Resize', scale=img_scale, keep_ratio=True),

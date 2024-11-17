@@ -140,7 +140,6 @@ def main():
             'The dump file must be a pkl file.'
         runner.test_evaluator.metrics.append(
             DumpDetResults(out_file_path=args.out))
-
     # start testing
     runner.test()
 
