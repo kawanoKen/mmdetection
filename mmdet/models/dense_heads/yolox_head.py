@@ -430,7 +430,6 @@ class YOLOXHead(BaseDenseHead):
         num_imgs = len(batch_img_metas)
         if batch_gt_instances_ignore is None:
             batch_gt_instances_ignore = [None] * num_imgs
-
         featmap_sizes = [cls_score.shape[2:] for cls_score in cls_scores]
         mlvl_priors = self.prior_generator.grid_priors(
             featmap_sizes,

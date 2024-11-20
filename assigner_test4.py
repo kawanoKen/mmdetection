@@ -2,12 +2,12 @@ from mmdet.models.detectors.yolox import YOLOX
 from mmengine.config import Config
 from mmengine.registry import RUNNERS
 from mmdet.models.data_preprocessors import DetDataPreprocessor
+from mmdet.apis import DetInferencer
 from mmengine.model.base_model.base_model import BaseModel
 from mmengine.runner import load_checkpoint
 import torch
 import os.path as osp
 from mmdet.models.task_modules.assigners import SimOTAAssigner, OTAAssigner
-
 
 # img = 'mmdetection/demo/demo.jpg'
 
@@ -41,16 +41,14 @@ for v in runner.train_dataloader:
     inputs = v["inputs"]
     gt_instances = [v["data_samples"][i].gt_instances  for i in range(8)]
     ignored_instances = [v["data_samples"][i].ignored_instances  for i in range(8)]
-
+    
     yolox.bbox_head.assigner = SimOTAAssigner()
 
-    cls_scores, bbox_preds, objectnesses = yolox(inputs)
+    cls_scores, bbox_preds, objectnesses = yolox(inputs,mode = "loss")
     results = yolox.bbox_head.assigner_test(cls_scores, bbox_preds, objectnesses, gt_instances, 8)
     ota_assign_results_stride8 = [results[i][:6400] for i in range (8)]
     ota_assign_results_stride16 = [results[i][6400:8000] for i in range (8)]
     ota_assign_results_stride32 = [results[i][8000:] for i in range (8)]
-    breakpoint()
-
 
     checkpoint_path = "/data3/yamamura/mmdet_custom/mmdetection-kawano/work_dirs/yolox_s_ota_8xb8-300e_coco/epoch_100.pth"
     load_checkpoint(yolox, checkpoint_path)
@@ -65,6 +63,10 @@ for v in runner.train_dataloader:
     break
 
 breakpoint()
+
+inferencer = DetInferencer()
+inferencer
+
 
 def diff(assigner_1, assigner_2):
     #augs:      two assign results of same stride

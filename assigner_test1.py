@@ -18,7 +18,6 @@ config = './configs/yolox/yolox_test.py'
 
 # print(isinstance(img, (list, tuple)))
 
-torch.manual_seed(0)
 cfg = Config.fromfile(config)
 
 cfg.work_dir = osp.join('./work_dirs_test',
@@ -40,7 +39,6 @@ runner = RUNNERS.build(cfg)
 #                                                    ]
 
 for v in runner.train_dataloader:
-
     v = data_preprocessor.forward(v)
     inputs = v["inputs"]
     gt_instances = [v["data_samples"][i].gt_instances  for i in range(8)]
@@ -51,7 +49,7 @@ for v in runner.train_dataloader:
 
     cls_scores, bbox_preds, objectnesses = yolox(inputs)
     results = yolox.bbox_head.assigner_test(cls_scores, bbox_preds, objectnesses, gt_instances, 8)
-
+    breakpoint()
     ota_assign_results_stride8 = [results[i][:6400] for i in range (8)]
     ota_assign_results_stride16 = [results[i][6400:8000] for i in range (8)]
     ota_assign_results_stride32 = [results[i][8000:] for i in range (8)]

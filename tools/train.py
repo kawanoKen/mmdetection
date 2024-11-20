@@ -112,7 +112,7 @@ def main():
         # build customized runner from the registry
         # if 'runner_type' is set in the cfg
         runner = RUNNERS.build(cfg)
-
+    breakpoint()
     # for v in runner.train_dataloader:
     #     breakpoint()
     # start training

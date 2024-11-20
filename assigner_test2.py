@@ -19,7 +19,6 @@ config = './configs/yolox/yolox_test.py'
 
 # print(isinstance(img, (list, tuple)))
 
-torch.manual_seed(0)
 cfg = Config.fromfile(config)
 
 cfg.work_dir = osp.join('./work_dirs_test',
@@ -48,8 +47,10 @@ for v in runner.train_dataloader:
     
     cfg.train_cfg = dict(assigner=dict(type='SimOTAAssigner', center_radius=2.5))
     model = init_detector(cfg, device = "cpu")
+    yolox = YOLOX(backbone, neck, head, data_preprocessor=data_preprocessor)
 
     cls_scores, bbox_preds, objectnesses = model(inputs)
+    breakpoint()
     results = model.bbox_head.assigner_test(cls_scores, bbox_preds, objectnesses, gt_instances, 8)
     ota_assign_results_stride8 = [results[i][:6400] for i in range (8)]
     ota_assign_results_stride16 = [results[i][6400:8000] for i in range (8)]
