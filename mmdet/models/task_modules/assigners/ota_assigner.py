@@ -3,7 +3,6 @@ from typing import Optional, Tuple
 
 import torch
 import torch.nn.functional as F
-import pdb
 from mmengine.structures import InstanceData
 from torch import Tensor
 
@@ -12,7 +11,6 @@ from mmdet.utils import ConfigType
 from .assign_result import AssignResult
 from .base_assigner import BaseAssigner
 import ot
-
 INF = 100000.0
 EPS = 1.0e-7
 
@@ -214,23 +212,22 @@ class OTAAssigner(BaseAssigner):
         targets."""
         matching_matrix = torch.zeros_like(cost, dtype=torch.uint8)
         # select candidate topk ious for dynamic-k calculation
-        candidate_topk = min(self.candidate_topk, pairwise_ious.size(0))
-        topk_ious, _ = torch.topk(pairwise_ious, candidate_topk, dim=0)
+        candidate_topk = min(self.candidate_topk, pairwise_ious.size(0))  #candidate_topkとアンカー数のうち、少ない方
+        topk_ious, _ = torch.topk(pairwise_ious, candidate_topk, dim=0)   #各gtについてiouがtopkのanchorとのiou
         # calculate dynamic k for each gt
-        dynamic_ks = torch.clamp(topk_ious.sum(0).int(), min=1)
-
+        dynamic_ks = torch.clamp(topk_ious.sum(0).int(), min=1) #各gtの割り当てanchor数.min(topk_ious.sum(0), 1)
         mu = pairwise_ious.new_ones(num_gt + 1)
         mu[:-1] = dynamic_ks.float()
         mu[-1] = cost.shape[0] - mu[:-1].sum()
         nu = pairwise_ious.new_ones(cost.shape[0])
 
-        _, pi = self.sinkhorn(nu, mu, cost)
-        rescale_factor, _ = pi.max(dim=1)
-        matching_matrix = pi / rescale_factor.unsqueeze(1)
+        # _, pi = self.sinkhorn(nu, mu, cost)
+        # rescale_factor, _ = pi.max(dim=1)
+        # matching_matrix = pi / rescale_factor.unsqueeze(1)
 
-        # matching_matrix = ot.emd(nu, mu, cost, EPS)
-        # assert (matching_matrix.sum(1) == nu).all()
-        # assert (matching_matrix.sum(0) == mu).all()
+        matching_matrix = ot.emd(nu, mu, cost, EPS)
+        assert (matching_matrix.sum(1) == nu).all()
+        assert (matching_matrix.sum(0) == mu).all()
 
         matching_matrix = matching_matrix[:, :-1]
         fg_mask_inboxes = matching_matrix.sum(1) > 0

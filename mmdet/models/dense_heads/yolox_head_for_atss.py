@@ -23,7 +23,7 @@ from .base_dense_head import BaseDenseHead
 
 
 @MODELS.register_module()
-class YOLOXHead(BaseDenseHead):
+class YOLOXHeadforATSS(BaseDenseHead):
     """YOLOXHead head used in `YOLOX <https://arxiv.org/abs/2107.08430>`_.
 
     Args:
@@ -577,6 +577,7 @@ class YOLOXHead(BaseDenseHead):
             bboxes=decoded_bboxes, scores=scores.sqrt_(), priors=offset_priors)
         assign_result = self.assigner.assign(
             pred_instances=pred_instances,
+            num_level_priors = [6400, 1600, 400],
             gt_instances=gt_instances,
             gt_instances_ignore=gt_instances_ignore)
 
