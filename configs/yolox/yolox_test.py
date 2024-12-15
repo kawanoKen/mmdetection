@@ -27,7 +27,7 @@ train_dataset = dict(_delete_=True,
         dataset=dict(
         type=dataset_type,
         data_root=data_root,
-        ann_file='annotations/instances_8.json',
+        ann_file='annotations/instances_2017.json',
         data_prefix=dict(img='train2017/'),
         pipeline=[
             dict(type='LoadImageFromFile', backend_args=backend_args),

@@ -20,6 +20,13 @@ from .task_aligned_assigner import TaskAlignedAssigner
 from .topk_hungarian_assigner import TopkHungarianAssigner
 from .uniform_assigner import UniformAssigner
 from .ota_assigner import OTAAssigner
+from .ota_assigner_test import OTAAssigner_test
+from .simota_assigner_test import SimOTAAssigner_test
+from .ota_assigner_giou import OTAAssigner_custom
+from .atss_assigner_yolox import ATSSAssigner_yolox, ATSSAssigner_yolox_test
+from .ota_assigner_thr import OTAAssigner_thr
+from .ota_assigner_gtiou import OTAAssigner_gtiou
+from .uota_assigner import UOTAAssigner
 
 __all__ = [
     'BaseAssigner', 'BinaryFocalLossCost', 'MaxIoUAssigner',
@@ -29,5 +36,7 @@ __all__ = [
     'TaskAlignedAssigner', 'TopkHungarianAssigner', 'BBoxL1Cost',
     'ClassificationCost', 'CrossEntropyLossCost', 'DiceCost', 'FocalLossCost',
     'IoUCost', 'BboxOverlaps2D', 'DynamicSoftLabelAssigner',
-    'MultiInstanceAssigner', 'BboxOverlaps2D_GLIP', 'OTAAssigner'
+    'MultiInstanceAssigner', 'BboxOverlaps2D_GLIP', 
+    'OTAAssigner', "SimOTAAssigner_test", "OTAAssigner_test", "OTAAssigner_custom", "OTAAssigner_thr", "OTAAssigner_gtiou",
+    "ATSSAssigner_yolox", "ATSSAssigner_yolox_test", "UOTAAssigner"
 ]

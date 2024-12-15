@@ -212,7 +212,6 @@ class YOLOXHead(BaseDenseHead):
 
     def forward(self, x: Tuple[Tensor]) -> Tuple[List]:
         """Forward features from the upstream network.
-
         Args:
             x (Tuple[Tensor]): Features from the upstream network, each is
                 a 4D-tensor.
@@ -579,6 +578,7 @@ class YOLOXHead(BaseDenseHead):
             pred_instances=pred_instances,
             gt_instances=gt_instances,
             gt_instances_ignore=gt_instances_ignore)
+        
 
         sampling_result = self.sampler.sample(assign_result, pred_instances,
                                               gt_instances)
@@ -655,8 +655,13 @@ class YOLOXHead(BaseDenseHead):
         flatten_priors = torch.cat(mlvl_priors)
         flatten_bboxes = self._bbox_decode(flatten_priors, flatten_bbox_preds)
         results = []
+        dynamic_kss = []
+        topk_iouss = []
+        topk_indexes = []
+        valid_masks = []
+        cost_matrixes = []
         for i in range(num_imgs):
-            result = self.get_assign(
+            result , dynamic_ks, topk_ious, top_index, valid_mask, cost_matrix= self.get_assign(
                 flatten_priors,
                 flatten_cls_preds.detach()[i],
                 flatten_bboxes.detach()[i],
@@ -664,8 +669,13 @@ class YOLOXHead(BaseDenseHead):
                 batch_gt_instances[i],
                 batch_gt_instances_ignore[i])
             results.append(result)
+            dynamic_kss.append(dynamic_ks)
+            topk_iouss.append(topk_ious)
+            topk_indexes.append(top_index)
+            valid_masks.append(valid_mask)
+            cost_matrixes.append(cost_matrix)
         
-        return results, flatten_bboxes
+        return results, flatten_bboxes,flatten_cls_preds, dynamic_kss, topk_iouss, topk_indexes, valid_masks, cost_matrixes
 
 
 
@@ -730,9 +740,10 @@ class YOLOXHead(BaseDenseHead):
         pred_instances = InstanceData(
             bboxes=decoded_bboxes, scores=scores.sqrt_(), priors=offset_priors)
         
-        assign_result = self.assigner.assign(
+        assign_result, dynamic_ks, topk_ious, top_index, valid_mask, cost_matrix = self.assigner.assign(
             pred_instances=pred_instances,
             gt_instances=gt_instances,
             gt_instances_ignore=gt_instances_ignore)
         
-        return assign_result.gt_inds
+        return assign_result.gt_inds, dynamic_ks, topk_ious, top_index, valid_mask, cost_matrix
+    
